@@ -49,16 +49,16 @@ def main():
 
     #The following code sectuion loads in the links from links_to_audio.txt
     links_to_audio = []
-    with open('links_to_audio.txt', 'r') as file:
+    with open('data/links_to_audio.txt', 'r') as file:
         links_to_audio = file.readlines()
 
     counter = 0
-    for i in tqdm(range(0, len(links_to_audio))):
+    for i in tqdm(range(0,10)):
         link = links_to_audio[i]
         response = requests.get(link[:-1])
         try:
             response.raise_for_status()
-            path = f'./noisy_audio/noisy_audio_{counter}.flac'
+            path = f'data/noisy_audio/noisy_audio_{counter}.flac'
             with open(path, 'wb') as soundfile:
                 soundfile.write(response.content)
                 counter += 1

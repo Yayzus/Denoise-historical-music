@@ -3,3 +3,7 @@ results/
 
 comments.txt
 notes.txt
+
+lightning_logs/
+
+gan.pth

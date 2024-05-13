@@ -2,6 +2,9 @@ import numpy as np
 import librosa
 import pickle
 import soundfile as sf
+import os
+from tqdm import tqdm
+
 
 
 def apply_time_shift(noise_sample):
@@ -48,7 +51,9 @@ def noise_audio(noise_samples, clear_audio, sample_rate):
             if overlap_start_index < 0:
                 overlap_start_index = 0
             overlap_end_index = overlap_start_index + overlap_length - 1
-            for i, overlap_value in zip(range(overlap_start_index, overlap_end_index + 1), modified_noise_sample[:overlap_length]):
+            if overlap_end_index >= len(noise):
+                overlap_end_index = len(noise)-1
+            for i, overlap_value in zip(range(overlap_start_index, overlap_end_index+1), modified_noise_sample[:overlap_length]):
                 noise[i] += overlap_value
             noise.extend(modified_noise_sample[overlap_length:])
     if len(noise) > len(clear_audio):
@@ -58,12 +63,32 @@ def noise_audio(noise_samples, clear_audio, sample_rate):
     return [clear_audio[i] + noise_with_gain[i] for i in range(len(clear_audio))]
 
 def main():
-    with open('extracted_noises/noise_samples.pickle', 'rb') as file:
+    # [[][]]
+    training_data = []
+    with open('data/extracted_noises/noise_samples.pickle', 'rb') as file:
         noise_samples = pickle.load(file)
-    fr, sr = librosa.load('clear_audio/classical.00000.wav')
-    noise = noise_audio(noise_samples, fr, sr)
-    sf.write('./noised_audio_made_by_me.flac', noise, sr, format='flac')
 
+    path_prefix = "data/clear_audio/"
+    for file in tqdm(os.listdir('data/clear_audio')):
+        fr, sr = librosa.load(path_prefix+file)
+        if sr == 22050:
+            start_idx = 0
+            end_idx = 10*sr-1
+            while end_idx <= len(fr):
+                clear = fr[start_idx:end_idx]
+                noisy = noise_audio(noise_samples, clear, sr)
+                training_data.append([clear, noisy])
+                start_idx += 10*sr
+                end_idx += 10*sr
+    del(noise_samples)
+    print(np.asarray(training_data).shape)
+    # with open("data/training_data.pickle", "wb") as file:
+    #     print('yolopapi')
+    #     pickle.dump(training_data, file)
+    chunk_size = 10  # Adjust as needed
+    with open("data/training_data.pickle", 'wb') as f:
+        for i in range(0, len(training_data), chunk_size):
+            pickle.dump(training_data[i:i+chunk_size], f)
 
 if __name__ == '__main__':
     main()
