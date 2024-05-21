@@ -24,17 +24,14 @@ def main():
 
     # links_to_audio = []
     # page_urls = [
-    #     'https://pool.publicdomainproject.org/index.php/Category:FLAC_sound_files',
-    #     'https://pool.publicdomainproject.org/index.php?title=Category:FLAC_sound_files&amp;pagefrom=Dgg-68132b-2364ge5#mw-pages',
-    #     'https://pool.publicdomainproject.org/index.php?title=Category:FLAC_sound_files&pagefrom=Hmv-db2046-32-3914#mw-pages',
-    #     'https://pool.publicdomainproject.org/index.php?title=Category:FLAC_sound_files&pagefrom=Parlophon-p9803-20446#mw-pages',
+    #     'https://web.archive.org/web/20230609103058/http://pool.publicdomainproject.org/index.php/Category:FLAC_sound_files',
+    #     'https://web.archive.org/web/20220117105221/https://pool.publicdomainproject.org/index.php?title=Category:FLAC_sound_files&pagefrom=Dgg-68132b-2364ge5#mw-pages'
     # ]
 
     # for url in page_urls:
     #     page = requests.get(url)
 
     #     soup = BeautifulSoup(page.text, features="html.parser")
-
     #     soundfile_tags = soup.select('div.mw-category-group ul li a')
     #     print(len(soundfile_tags))
     #     for soundfile_tag in soundfile_tags:
@@ -42,12 +39,12 @@ def main():
     #         if audio_link:
     #             links_to_audio.append(audio_link)
     # print(len(links_to_audio))
-    # with open('links_to_audio.txt', 'w') as file:
+    # with open('data/links_to_audio.txt', 'w') as file:
     #     for link in links_to_audio:
-    #         file.write(f'{link}\n')
+            # file.write(f'{link}\n')
 
 
-    #The following code sectuion loads in the links from links_to_audio.txt
+    # The following code sectuion loads in the links from links_to_audio.txt
     links_to_audio = []
     with open('data/links_to_audio.txt', 'r') as file:
         links_to_audio = file.readlines()

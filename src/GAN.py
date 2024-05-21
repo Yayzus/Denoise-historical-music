@@ -7,7 +7,9 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 import pickle
 import librosa
-from torch.utils.data import DataLoader, random_split, TensorDataset
+from torch.utils.data import DataLoader, random_split, Dataset
+import librosa
+import os
 
 
 class E_block(torch.nn.Module):
@@ -20,8 +22,9 @@ class E_block(torch.nn.Module):
             )
         else:
             self.conv2 = nn.Conv2d(
-                in_channels, out_channels, kernel_size=4, stride=stride, padding=1
+                in_channels, out_channels, kernel_size=(4, 4), stride=stride, padding=1
             )
+
         self.activation = nn.ReLU()
 
     def forward(self, x):
@@ -98,6 +101,19 @@ class Generator(torch.nn.Module):
         )
 
         return cor_dim
+    def convert_audio_to_image_batch(batch):
+        return 
+    
+    def convert_audio_to_image_single(self, x):
+        
+        x_cpu = x.clone().cpu()
+        stft = librosa.stft(x_cpu.numpy())
+        real = np.real(stft)
+        imaginary = np.imag(stft)
+
+        img =  np.stack((real, imaginary), axis=-1)
+        img_tensor = torch.tensor(img).type_as(x)
+        return img_tensor
 
     def forward(self, x):
         x = self.conv1(x)
@@ -183,9 +199,7 @@ class Discriminator(nn.Module):
         self.eblock5 = E_block(128, 256, stride=(2, 2))
         self.eblock6 = E_block(256, 512, stride=(2, 2))
 
-        self.fc1 = nn.Linear(128 * 128 * 6, 512)
-        self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(256, 1)
+        self.fc1 = nn.Linear(128 * 128 * 6, 1)
 
         self.activation = nn.ReLU()
 
@@ -219,60 +233,34 @@ class Discriminator(nn.Module):
         x = self.fc1(x)
         x = self.activation(x)
 
-        x = self.fc2(x)
-        x = self.activation(x)
-
-        x = self.fc3(x)
-
         return torch.sigmoid(x)
 
+class DHMDataSet(Dataset):
+    def __init__(self, directory):
+        super().__init__()
+        self.files = os.listdir(directory)
+        self.prefix = directory
+
+    def __getitem__(self, index):
+        clear_img, noisy_img = np.float32(np.load(f'{self.prefix}/{self.files[index]}'))
+        return (torch.tensor(clear_img), torch.tensor(noisy_img))
+    
+    def __len__(self):
+        return len(self.files)
 
 class DHMDataModule(pl.LightningDataModule):
-    def __init__(self, input_file, batch_size=4, num_workers=4) -> None:
+    def __init__(self, directory, batch_size=7, num_workers=4) -> None:
         super().__init__()
-        self.data_file = input_file
+        self.directory = directory
         self.batch_size = batch_size
         self.num_workers = num_workers
 
-    def read_list_from_file(self, filename):
-        result = []
-        with open(filename, "rb") as f:
-            while True:
-                try:
-                    chunk = pickle.load(f)
-                    result.extend(chunk)
-                except EOFError:
-                    break
-        return result
-
-    def convert_matrix_to_2_channel_image(self, x):
-        real_part = np.real(x)
-        imaginary_part = np.imag(x)
-
-        image_2_channel = np.stack((real_part, imaginary_part), axis=0)
-
-        return image_2_channel
-
     def setup(self, stage = None):
-        full_data = self.read_list_from_file(self.data_file)
-        clear_audio = [audio[0] for audio in full_data]
-        noisy_audio = [audio[1] for audio in full_data]
-        del full_data
 
-        for i in range(0, len(clear_audio)):
-            clear_audio[i] = self.convert_matrix_to_2_channel_image(
-                librosa.stft(np.asarray(clear_audio[i]))
-            )
-            noisy_audio[i] = self.convert_matrix_to_2_channel_image(
-                librosa.stft(np.asarray(noisy_audio[i]))
-            )
-
-        clear_audio = np.array(clear_audio, dtype=np.float32)
-        noisy_audio = np.array(noisy_audio, dtype=np.float32)
-
-        imgs = TensorDataset(torch.tensor(noisy_audio), torch.tensor(clear_audio))
-        first_split, self.test_data = random_split(imgs, [0.8, 0.2])
+        waveforms = DHMDataSet(self.directory)
+        first_split, self.test_data = random_split(waveforms, [0.8, 0.2])
         self.train_data, self.val_data = random_split(first_split, [0.8, 0.2])
+
 
     def train_dataloader(self):
         return DataLoader(
@@ -303,9 +291,12 @@ class GAN(pl.LightningModule):
 
     def adversarial_loss(self, y_hat, y):
         return F.binary_cross_entropy(y_hat, y)
+    
 
     def training_step(self, batch):
-        noisy_imgs, clear_imgs = batch
+        clear_imgs, noisy_imgs = batch
+
+        device = 'cuda' if noisy_imgs.is_cuda else 'cpu'
 
         optimizer_g, optimizer_d = self.optimizers()
 
@@ -315,8 +306,7 @@ class GAN(pl.LightningModule):
         #train the generator
 
         #ground thruth
-        y = torch.ones(noisy_imgs.size(0), 1)
-        y.type_as(noisy_imgs)
+        y = torch.ones(noisy_imgs.size(0), 1, device=device)
 
         #we test if the generator can fool the discriminator
         y_hat = self.discriminator(generated_imgs)
@@ -331,18 +321,18 @@ class GAN(pl.LightningModule):
         self.toggle_optimizer(optimizer_d)
 
         #how well can the discriminator detect clear audio
-        y = torch.ones(clear_imgs.size(0), 1)
-        y.type_as(clear_imgs)
+        y = torch.ones(clear_imgs.size(0), 1, device=device)
+        # y.type_as(clear_imgs)
 
         y_hat = self.discriminator(clear_imgs)
 
         clear_loss = self.adversarial_loss(y_hat, y)
 
-        #how well can the discriminator detect noisy audio
-        y = torch.zeros(noisy_imgs.size(0), 1)
-        y.type_as(noisy_imgs)
+        #how well can the discriminator detect clear audio made by the generator
+        y = torch.zeros(noisy_imgs.size(0), 1, device=device)
+        # y.type_as(noisy_imgs)
 
-        y_hat = self.discriminator(noisy_imgs)
+        y_hat = self.discriminator(self(noisy_imgs).detach())
 
         noisy_loss = self.adversarial_loss(y_hat, y)
 
@@ -359,7 +349,7 @@ class GAN(pl.LightningModule):
 
     def configure_optimizers(self):
         lr = self.hparams.lr
-        opt_g = optim.Adam(self.generator.parameters(), lr=lr)
-        opt_d = optim.Adam(self.discriminator.parameters(), lr=lr)
+        opt_g = optim.SGD(self.generator.parameters(), lr=lr)
+        opt_d = optim.SGD(self.discriminator.parameters(), lr=lr)
 
         return [opt_g, opt_d], []

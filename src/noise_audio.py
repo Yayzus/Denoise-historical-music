@@ -4,6 +4,8 @@ import pickle
 import soundfile as sf
 import os
 from tqdm import tqdm
+from scipy.signal import butter, lfilter
+
 
 
 
@@ -36,30 +38,46 @@ def add_gain(noise, gain_dB):
     
     return noise_with_gain
 
+def bandpass_filter(data, sample_rate):
+    nyquist = 0.5 * sample_rate
+    lowcut = np.random.uniform(50, 150)
+    highcut = np.random.uniform(5000, 10000)
+    low = lowcut / nyquist
+    high = highcut / nyquist
+    b, a = butter(1, [low, high], btype='band')
+    return lfilter(b, a, data)
+
 def noise_audio(noise_samples, clear_audio, sample_rate):
     noise = []
+    random_noise_segment = noise_samples[np.random.choice(len(noise_samples)-1)]
     # import pudb; pu.db
     while len(noise) < len(clear_audio):
-        random_noise_sample = noise_samples[np.random.choice(len(noise_samples)-1)]
-        modified_noise_sample = apply_time_shift(add_perturbation(random_noise_sample))
+        # random_noise_sample = noise_samples[np.random.choice(len(noise_samples)-1)]
+        modified_noise_sample = apply_time_shift(add_perturbation(random_noise_segment))
         # modified_noise_sample  = random_noise_sample
         overlap_length = int(0.2 * len(modified_noise_sample))
         if len(noise) == 0:
             noise.extend(modified_noise_sample)
         else:
             overlap_start_index = len(noise) - overlap_length
-            if overlap_start_index < 0:
-                overlap_start_index = 0
             overlap_end_index = overlap_start_index + overlap_length - 1
-            if overlap_end_index >= len(noise):
-                overlap_end_index = len(noise)-1
             for i, overlap_value in zip(range(overlap_start_index, overlap_end_index+1), modified_noise_sample[:overlap_length]):
-                noise[i] += overlap_value
+                noise[i] = (noise[i] + overlap_value)/2
             noise.extend(modified_noise_sample[overlap_length:])
     if len(noise) > len(clear_audio):
         noise = noise[:len(clear_audio)]
 
-    noise_with_gain = add_gain(noise, 15)
+    noise = bandpass_filter(noise, 22050)
+    treshold_up_db = np.quantile(noise, 0.75)
+    treshold_low_db = np.quantile(noise, 0.25)
+
+    for i in range(len(noise)):
+        if noise[i] > treshold_up_db:
+            noise[i] = treshold_up_db
+        if noise[i] < treshold_low_db:
+            noise[i] = treshold_low_db
+
+    noise_with_gain = bandpass_filter(add_gain(noise, 15), 22050)
     return [clear_audio[i] + noise_with_gain[i] for i in range(len(clear_audio))]
 
 def main():

@@ -7,3 +7,6 @@ notes.txt
 lightning_logs/
 
 gan.pth
+
+src/test/
+__pycache__
