@@ -16,7 +16,7 @@ def read_list_from_file(filename):
     return result
 
 def convert_audio_to_image(x):
-    stft = librosa.stft(np.asarray(x))
+    stft = librosa.stft(np.asarray(x), n_fft=1024, hop_length=512)
     real = np.real(stft)
     imaginary = np.imag(stft)
 

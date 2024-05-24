@@ -10,3 +10,4 @@ gan.pth
 
 src/test/
 __pycache__
+test_stuff_out.py

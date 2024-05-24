@@ -5,6 +5,7 @@ import soundfile as sf
 import os
 from tqdm import tqdm
 from scipy.signal import butter, lfilter
+import soundfile as sf
 
 
 
@@ -77,8 +78,27 @@ def noise_audio(noise_samples, clear_audio, sample_rate):
         if noise[i] < treshold_low_db:
             noise[i] = treshold_low_db
 
-    noise_with_gain = bandpass_filter(add_gain(noise, 15), 22050)
+    noise_with_gain = bandpass_filter(add_gain(noise, 20), 22050)
     return [clear_audio[i] + noise_with_gain[i] for i in range(len(clear_audio))]
+
+def normalize_audio(audio_path, target_rms=-15):
+    # Load audio file
+    y, sr = librosa.load(audio_path, sr=None)
+    
+    # Calculate RMS loudness
+    rms = np.sqrt(np.mean(np.square(y)))
+    
+    # Compute scaling factor
+    scaling_factor = 10 ** ((target_rms - rms) / 20)
+    
+    # Apply scaling
+    y_normalized = y * scaling_factor
+    
+    # Prevent clipping
+    y_normalized = np.clip(y_normalized, -1.0, 1.0)
+    
+    return y_normalized, sr
+
 
 def main():
     # [[][]]
@@ -88,16 +108,16 @@ def main():
 
     path_prefix = "data/clear_audio/"
     for file in tqdm(os.listdir('data/clear_audio')):
-        fr, sr = librosa.load(path_prefix+file)
+        fr, sr = normalize_audio(path_prefix+file)
         if sr == 22050:
             start_idx = 0
-            end_idx = 10*sr-1
+            end_idx = 5*sr-1
             while end_idx <= len(fr):
                 clear = fr[start_idx:end_idx]
                 noisy = noise_audio(noise_samples, clear, sr)
                 training_data.append([clear, noisy])
-                start_idx += 10*sr
-                end_idx += 10*sr
+                start_idx += 5*sr
+                end_idx += 5*sr
     del(noise_samples)
     print(np.asarray(training_data).shape)
     # with open("data/training_data.pickle", "wb") as file:
