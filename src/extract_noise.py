@@ -50,6 +50,10 @@ def main():
 
     if not os.path.exists('data/extracted_noises'):
         os.makedirs('data/extracted_noises')
+    
+    if not os.path.exists('data/noisy_audio'):
+        print('Please provide the noisy audio in data/noisy_audio')
+        return
 
     path_prefix = "data/noisy_audio/"
     soundfiles = [path_prefix + file for file in os.listdir("data/noisy_audio")]

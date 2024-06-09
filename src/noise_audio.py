@@ -46,11 +46,13 @@ def noise_audio(noise_samples, clear_audio, sample_rate):
 def main():
     # [[][]]
     training_data = []
+    
+    if not os.path.exists('data/clear_audio'):
+        print('Please provide the clear audio in data/clear_audio')
+        return
+    
     with open('data/extracted_noises/noise_samples.pickle', 'rb') as file:
         noise_samples = pickle.load(file)
-
-    if not os.path.exists('data/noisy_audio_samples'):
-        os.makedirs('data/noisy_audio_samples')
 
     path_prefix = "data/clear_audio/"
     for file in tqdm(os.listdir('data/clear_audio')):
