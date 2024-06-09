@@ -49,6 +49,9 @@ def main():
     with open('data/extracted_noises/noise_samples.pickle', 'rb') as file:
         noise_samples = pickle.load(file)
 
+    if not os.path.exists('data/noisy_audio_samples'):
+        os.makedirs('data/noisy_audio_samples')
+
     path_prefix = "data/clear_audio/"
     for file in tqdm(os.listdir('data/clear_audio')):
         fr, sr = librosa.load(path_prefix+file)
@@ -72,6 +75,8 @@ def main():
     print(f'snr: {np.sum(snr)/len(snr)}')
 
     sample_idx = 0
+
+    #Save 20 artificially noised audio samples
     for _ in range(20):
         random_sample = train_data[np.random.choice(len(train_data)-1)][1]
         sf.write(f'data/noisy_audio_samples/sample{sample_idx}.flac', random_sample, 22050, format='flac')
