@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import librosa
 import torch
 
-def normalize_audio(audio, target_peak=0.9):
+def normalize_audio(audio, target_peak=0.99):
     #Normalizing an audio to have a max amplitude at target_peak
     peak = np.max(np.abs(audio))
     normalization_factor = target_peak / peak
@@ -17,7 +17,7 @@ def bandpass_filter(data, sample_rate):
     highcut = np.random.uniform(5000, 10000)
     low = lowcut / nyquist
     high = highcut / nyquist
-    b, a = butter(6, [low, high], btype='band')
+    b, a = butter(5, [low, high], btype='band')
     return filtfilt(b, a, data)
 
 def apply_time_shift(noise_sample):
@@ -28,8 +28,8 @@ def apply_time_shift(noise_sample):
     return shifted_signal
 
 def add_gain(noise):
-    #Adding a random gain between [10, 35]dB to a noise segment 
-    gain_dB = np.random.uniform(10, 35)
+    #Adding a random gain between [15, 30]dB to a noise segment 
+    gain_dB = np.random.uniform(15, 30)
     gain_linear = int(10**(gain_dB / 20.0))
     
     noise_with_gain = noise*gain_linear
@@ -87,3 +87,4 @@ def snr(clear, noisy, spectogram=False):
     snr = 10 * np.log10(signal_power / noise_power)
     
     return snr
+

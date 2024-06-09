@@ -2,6 +2,7 @@ import pickle
 import tqdm as tqdm
 import numpy as np
 from utils import convert_audio_to_image
+import os
 
 def read_list_from_file(filename):
     result = []
@@ -15,6 +16,10 @@ def read_list_from_file(filename):
     return result
 
 def main():
+
+    if not os.path.exists('data/training_data'):
+        os.makedirs('data/training_data')
+
     full_data = read_list_from_file("data/training_data.pickle")
 
     #Turning the waveform audio generated in noise_audio.py into 2 channel images for training

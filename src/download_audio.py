@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 import requests
 import re
 from tqdm import tqdm
+import os
 
 regex_identifier = re.compile('<[^<>]+>([^<>]+)</a>')
 regex_group = re.compile('([^-]+)-[^-]+-[^-]+')
@@ -46,6 +47,10 @@ def main():
 
     # The following code sectuion loads in the links from links_to_audio.txt
     links_to_audio = []
+
+    if not os.path.exists('data/noisy_audio'):
+        os.makedirs('data/noisy_audio')
+
     with open('data/links_to_audio.txt', 'r') as file:
         links_to_audio = file.readlines()
 

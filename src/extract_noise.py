@@ -7,7 +7,7 @@ from tqdm import tqdm
 from utils import normalize_audio
 
 
-Q = 0.04 # 1%
+Q = 0.04 # 4%
 T = 0.1  # window size in s
 TARGET_SAMPLE_LENGTH = 0.25  # minimum length of desired noise samples is s
 
@@ -47,11 +47,15 @@ def extract_noise_samples(freq, sampleRate):
 
 
 def main():
+
+    if not os.path.exists('data/extracted_noises'):
+        os.makedirs('data/extracted_noises')
+
     path_prefix = "data/noisy_audio/"
     soundfiles = [path_prefix + file for file in os.listdir("data/noisy_audio")]
     for file in tqdm(soundfiles):
         fr, sr = librosa.load(file)
-        #This was left here, cause across all of the project I assumed that allf of the audio I used has a sample rate of 22050. This was left here to see if I'm right.
+        #This was left here, cause across all of the project I assumed that all of the audio I used has a sample rate of 22050. This was left here to see if I'm right.
         if sr != 22050:
             print(f'{sr}, {file}')
         extract_noise_samples(normalize_audio(fr), sr)
